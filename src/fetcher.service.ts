@@ -34,7 +34,7 @@ interface StationsInformation {
   };
 }
 
-interface StationsStatus {
+interface StationsStatuses {
   last_updated: number;
   ttl: number;
   data: {
@@ -89,7 +89,7 @@ export class FetcherService {
       .pipe(
         /** Retrieve the URL of the two feeds that we're interested into */
         map((resp) => ({
-          stationsStatus: findFeed(resp.data, 'station_status'),
+          stationsStatuses: findFeed(resp.data, 'station_status'),
           stationsInformation: findFeed(resp.data, 'station_information'),
         })),
         /** Create a new observable that will pull the data from the two URLs retrieve before */
@@ -102,9 +102,9 @@ export class FetcherService {
                 map((resp) => from(this.storeStationsInformation(resp.data))),
               ),
             this.http
-              .get<StationsStatus>(urls.stationsStatus.url)
+              .get<StationsStatuses>(urls.stationsStatuses.url)
               /** Store the retrieve data in the database */
-              .pipe(map((resp) => from(this.storeStationsStatus(resp.data)))),
+              .pipe(map((resp) => from(this.storeStationsStatuses(resp.data)))),
           ]),
         ),
       )
@@ -117,7 +117,7 @@ export class FetcherService {
       });
   }
 
-  private async storeStationsStatus(data: StationsStatus) {
+  private async storeStationsStatuses(data: StationsStatuses) {
     const entities = data.data.stations.map((station) =>
       this.statusRepository.create({
         ...station,
@@ -144,7 +144,7 @@ export class FetcherService {
       await this.informationRepository.save(entities);
       this.logger.log(`Saved ${entities.length} stations information`);
     } catch (err) {
-      this.logger.error('Unable to save stations status information');
+      this.logger.error('Unable to save stations information');
       this.logger.error(err);
     }
   }
