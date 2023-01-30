@@ -4,14 +4,17 @@ import { ConfigModule } from '@nestjs/config';
 import { ConfigService } from '@nestjs/config/dist';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DailyExport } from './daily-export.service';
 import { StationInformation } from './entities/station-information.entity';
 import { StationStatus } from './entities/station-status.entity';
 import { FetcherService } from './fetcher.service';
+import { Octokit } from 'octokit';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env', 'local.env'], // So we can use local.env file to store the GITHUB_TOKEN and gitignore it
     }),
     ScheduleModule.forRoot(),
     HttpModule,
@@ -20,13 +23,24 @@ import { FetcherService } from './fetcher.service';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        url: config.get('DATABASE_URL'),
+        url: config.getOrThrow('DATABASE_URL'),
         synchronize: true,
         entities: [StationStatus, StationInformation],
       }),
     }),
     TypeOrmModule.forFeature([StationStatus, StationInformation]),
   ],
-  providers: [FetcherService],
+  providers: [
+    FetcherService,
+    {
+      provide: 'OCTOKIT',
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        new Octokit({
+          auth: configService.getOrThrow('GITHUB_TOKEN'),
+        }),
+    },
+    DailyExport,
+  ],
 })
 export class AppModule {}
